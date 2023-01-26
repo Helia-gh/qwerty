@@ -122,7 +122,7 @@ def get_mutated_SELFIES(selfies_ls, num_mutations):
             str_chars = get_selfie_chars(str_)
             max_molecules_len = len(str_chars) + num_mutations
             
-            selfie_mutated, _ = p_mutate_selfie(str_, max_molecules_len)
+            selfie_mutated, _ = mutate_selfie(str_, max_molecules_len)
             selfie_ls_mut_ls.append(selfie_mutated)
         
         selfies_ls = selfie_ls_mut_ls.copy()
@@ -140,7 +140,7 @@ def substructure_preserver(mol):
     else: 
         return False # Molecule does not have substructure!
 
-def p_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
+def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
     '''Return a mutated selfie string (only one mutation on slefie is performed)
     
     Mutations are done until a valid molecule is obtained 
