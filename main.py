@@ -4,6 +4,8 @@ from selfies import encoder, decoder
 import utils.smiles_tools as smiles_tools
 import utils.selfies_tools as selfies_tools
 import utils.fingerprints as fingerprints
+from syba.syba import SybaClassifier
+import numpy as np
 
 RDLogger.DisableLog('rdApp.*')
 
@@ -14,9 +16,8 @@ fp_type = 'ECFP4'
 
 total_time = time.time()
 # num_random_samples = 50000 # For a more exhaustive search! 
-num_random_samples = 10000     
-#num_mutation_ls    = [1, 2, 3, 4, 5]
-num_mutation_ls    = [1, 2]
+num_random_samples = 100     
+num_mutation_ls    = [1, 2, 3, 4, 5]
 
 mol = Chem.MolFromSmiles(smi)
 if mol == None: 
@@ -74,3 +75,17 @@ mols_6 = [Chem.MolFromSmiles(canon_smi_ls[idx]) for idx in indices_thresh_6]
 # Molecules with fingerprint similarity > 0.4
 indices_thresh_4 = [i for i,x in enumerate(canon_smi_ls_scores) if x > 0.4 and x < 0.6]
 mols_4 = [Chem.MolFromSmiles(canon_smi_ls[idx]) for idx in indices_thresh_4]
+
+
+syba = SybaClassifier()
+syba.fitDefaultScore()
+
+syba_scores = []
+for item in canon_smi_ls: 
+    syba_scores.append(syba.predict(smi=item))
+        
+A = np.argsort(syba_scores)
+smi_arranged = [canon_smi_ls[i] for i in A]
+smi_arranged = smi_arranged[-20:]
+
+mols_ = [Chem.MolFromSmiles(x) for x in smi_arranged]
