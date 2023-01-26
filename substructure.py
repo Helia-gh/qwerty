@@ -7,7 +7,7 @@ from utils.smiles_tools import randomize_smiles, sanitize_smiles
 
 RDLogger.DisableLog('rdApp.*')
 
-smi     = 'COc1cc(ccc1O)c3cc(=O)c2c(O)c(CC=C(C)CCC=C(C)C)c(O)cc2o3'   # Celecoxib
+smi     = 'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'   # Celecoxib
 #smi     = 'COc1cc(ccc1O)c3cc(=O)c2c(O)c(CC=C(C)CCC=C(C)C)c(O)cc2o3'   # Cannflavin A
 fp_type = 'ECFP4'
 
