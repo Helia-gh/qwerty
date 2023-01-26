@@ -1,26 +1,32 @@
-import selfies, rdkit
+import rdkit, selfies
 import numpy as np
-from selfies import decoder 
+from selfies import decoder
 from rdkit import RDLogger
-import utils.smiles_tools as smiles_tools
-import utils.selfies_tools as selfies_tools
 
+from utils.smiles_tools import sanitize_smiles
 
 RDLogger.DisableLog('rdApp.*')
 
-def substructure_preserver(mol):
-    """
-    Check for substructure violates
-    Return True: contains a substructure violation
-    Return False: No substructure violation
-    """        
+def get_selfie_chars(selfie):
+    '''Obtain a list of all selfie characters in string selfie
     
-    if mol.HasSubstructMatch(rdkit.Chem.MolFromSmarts('c2c(O)c(CC=C(C)CCC=C(C)C)')) == True:
-        return True # The has substructure! 
-    else: 
-        return False # Molecule does not have substructure!
+    Parameters: 
+    selfie (string) : A selfie string - representing a molecule 
     
-def substructure_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
+    Example: 
+    >>> get_selfie_chars('[C][=C][C][=C][C][=C][Ring1][Branch1_1]')
+    ['[C]', '[=C]', '[C]', '[=C]', '[C]', '[=C]', '[Ring1]', '[Branch1_1]']
+    
+    Returns:
+    chars_selfie: list of selfie characters present in molecule selfie
+    '''
+    chars_selfie = [] # A list of all SELFIE sybols from string selfie
+    while selfie != '':
+        chars_selfie.append(selfie[selfie.find('['): selfie.find(']')+1])
+        selfie = selfie[selfie.find(']')+1:]
+    return chars_selfie
+
+def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
     '''Return a mutated selfie string (only one mutation on slefie is performed)
     
     Mutations are done until a valid molecule is obtained 
@@ -40,7 +46,7 @@ def substructure_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False
     '''
     valid=False
     fail_counter = 0
-    chars_selfie = selfies_tools.get_selfie_chars(selfie)
+    chars_selfie = get_selfie_chars(selfie)
     
     while not valid:
         fail_counter += 1
@@ -81,9 +87,9 @@ def substructure_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False
         sf = "".join(x for x in chars_selfie)
         
         try:
-            smiles = selfies.decoder(selfie_mutated)
-            mol, smiles_canon, done = smiles_tools.sanitize_smiles(smiles)
-            if len(selfie_mutated_chars) > max_molecules_len or smiles_canon=="" or substructure_preserver(mol)==False:
+            smiles = decoder(selfie_mutated)
+            mol, smiles_canon, done = sanitize_smiles(smiles)
+            if len(selfie_mutated_chars) > max_molecules_len or smiles_canon=="":
                 done = False
             if done:
                 valid = True
@@ -98,14 +104,50 @@ def substructure_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False
     
     return (selfie_mutated, smiles_canon)
 
+def get_mutated_SELFIES(selfies_ls, num_mutations): 
+    ''' Mutate all the SELFIES in 'selfies_ls' 'num_mutations' number of times. 
+    
+    Parameters:
+    selfies_ls   (list)  : A list of SELFIES 
+    num_mutations (int)  : number of mutations to perform on each SELFIES within 'selfies_ls'
+    
+    Returns:
+    selfies_ls   (list)  : A list of mutated SELFIES
+    
+    '''
+    for _ in range(num_mutations): 
+        selfie_ls_mut_ls = []
+        for str_ in selfies_ls: 
+            
+            str_chars = get_selfie_chars(str_)
+            max_molecules_len = len(str_chars) + num_mutations
+            
+            selfie_mutated, _ = p_mutate_selfie(str_, max_molecules_len)
+            selfie_ls_mut_ls.append(selfie_mutated)
+        
+        selfies_ls = selfie_ls_mut_ls.copy()
+    return selfies_ls
 
-def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
+def substructure_preserver(mol):
+    """
+    Check for substructure violates
+    Return True: contains a substructure violation
+    Return False: No substructure violation
+    """        
+    
+    if mol.HasSubstructMatch(rdkit.Chem.MolFromSmarts('NS(=O)(=O)c1ccc(-n2cccn2)cc1')) == True:
+        return True # The has substructure! 
+    else: 
+        return False # Molecule does not have substructure!
+
+def p_mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
     '''Return a mutated selfie string (only one mutation on slefie is performed)
     
     Mutations are done until a valid molecule is obtained 
-    Rules of mutation: With a 50% propbabily, either: 
+    Rules of mutation: With a 33.3% propbabily, either: 
         1. Add a random SELFIE character in the string
         2. Replace a random SELFIE character with another
+        3. Delete a random character
     
     Parameters:
     selfie            (string)  : SELFIE string to be mutated 
@@ -125,7 +167,7 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
                 
         alphabet = list(selfies.get_semantic_robust_alphabet()) # 34 SELFIE characters 
 
-        choice_ls = [1, 2] # 1=Insert; 2=Replace; 3=Delete
+        choice_ls = [1, 2, 3] # 1=Insert; 2=Replace; 3=Delete
         random_choice = np.random.choice(choice_ls, 1)[0]
         
         # Insert a character in a Random Location
@@ -160,8 +202,8 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
         
         try:
             smiles = decoder(selfie_mutated)
-            mol, smiles_canon, done = smiles_tools.sanitize_smiles(smiles)
-            if len(selfie_mutated_chars) > max_molecules_len or smiles_canon=="":
+            mol, smiles_canon, done = sanitize_smiles(smiles)
+            if len(selfie_mutated_chars) > max_molecules_len or smiles_canon=="" or substructure_preserver(mol)==False:
                 done = False
             if done:
                 valid = True
@@ -175,74 +217,3 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=False):
                 f.close()
     
     return (selfie_mutated, smiles_canon)
-
-
-def get_mutated_SELFIES(selfies_ls, num_mutations): 
-    ''' Mutate all the SELFIES in 'selfies_ls' 'num_mutations' number of times. 
-    
-    Parameters:
-    selfies_ls   (list)  : A list of SELFIES 
-    num_mutations (int)  : number of mutations to perform on each SELFIES within 'selfies_ls'
-    
-    Returns:
-    selfies_ls   (list)  : A list of mutated SELFIES
-    
-    '''
-    for _ in range(num_mutations): 
-        selfie_ls_mut_ls = []
-        for str_ in selfies_ls: 
-            
-            str_chars = get_selfie_chars(str_)
-            max_molecules_len = len(str_chars) + num_mutations
-            
-            selfie_mutated, _ = substructure_mutate_selfie(str_, max_molecules_len)
-            selfie_ls_mut_ls.append(selfie_mutated)
-        
-        selfies_ls = selfie_ls_mut_ls.copy()
-    return selfies_ls
-
-
-def get_selfie_chars(selfie):
-    '''Obtain a list of all selfie characters in string selfie
-    
-    Parameters: 
-    selfie (string) : A selfie string - representing a molecule 
-    
-    Example: 
-    >>> get_selfie_chars('[C][=C][C][=C][C][=C][Ring1][Branch1_1]')
-    ['[C]', '[=C]', '[C]', '[=C]', '[C]', '[=C]', '[Ring1]', '[Branch1_1]']
-    
-    Returns:
-    chars_selfie: list of selfie characters present in molecule selfie
-    '''
-    chars_selfie = [] # A list of all SELFIE sybols from string selfie
-    while selfie != '':
-        chars_selfie.append(selfie[selfie.find('['): selfie.find(']')+1])
-        selfie = selfie[selfie.find(']')+1:]
-    return chars_selfie
-
-
-def get_reward(selfie_A_chars, selfie_B_chars): 
-    '''Return the levenshtein similarity between the selfies characters in 'selfie_A_chars' & 'selfie_B_chars'
-
-    
-    Parameters:
-    selfie_A_chars (list)  : list of characters of a single SELFIES
-    selfie_B_chars (list)  : list of characters of a single SELFIES
-    
-    Returns:
-    reward (int): Levenshtein similarity between the two SELFIES
-    '''
-    reward = 0
-    iter_num = max(len(selfie_A_chars), len(selfie_B_chars)) # Larger of the selfie chars to iterate over 
-
-    for i in range(iter_num): 
-        
-        if i+1 > len(selfie_A_chars) or i+1 > len(selfie_B_chars): 
-            return reward
-            
-        if selfie_A_chars[i] == selfie_B_chars[i]: 
-            reward += 1
-            
-    return reward
-
