@@ -5,16 +5,16 @@ from utils.fingerprint import get_fp_scores
 from utils.selfies_tools import get_mutated_SELFIES
 from utils.smiles_tools import randomize_smiles, sanitize_smiles
 
-RDLogger.DisableLog('rdApp.*')
+#RDLogger.DisableLog('rdApp.*')
 
-smi     = 'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'   # Celecoxib
-#smi     = 'COc1cc(ccc1O)c3cc(=O)c2c(O)c(CC=C(C)CCC=C(C)C)c(O)cc2o3'   # Cannflavin A
+#smi     = 'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'   # Celecoxib
+smi     = 'COc1cc(ccc1O)c3cc(=O)c2c(O)c(CC=C(C)CCC=C(C)C)c(O)cc2o3'   # Cannflavin A
 fp_type = 'ECFP4'
 
 
 total_time = time.time()
 # num_random_samples = 50000 # For a more exhaustive search! 
-num_random_samples = 100     
+num_random_samples = 10
 num_mutation_ls    = [1, 2, 3, 4, 5]
 
 mol = Chem.MolFromSmiles(smi)

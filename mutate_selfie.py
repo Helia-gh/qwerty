@@ -1,9 +1,8 @@
-import rdkit, selfies
-import numpy as np
-from selfies import decoder
-from rdkit import RDLogger
+from utils.selfies_tools import get_selfie_chars
 from utils.smiles_tools import sanitize_smiles
-RDLogger.DisableLog('rdApp.*')
+from utils.selfies_tools import substructure_preserver
+import selfies
+import numpy as np
 
 def mutate_selfie(selfie, max_molecules_len, write_fail_cases=True):
     '''Return a mutated selfie string (only one mutation on slefie is performed)
@@ -30,13 +29,12 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=True):
     while not valid:
         fail_counter += 1
                 
-        alphabet = list(selfies.get_semantic_robust_alphabet()) # 34 SELFIE characters 
+        alphabet = list(selfies.get_semantic_robust_alphabet()) # 34 SELFIE characters
 
         choice_ls = [1, 2, 3] # 1=Insert; 2=Replace; 3=Delete
         random_choice = np.random.choice(choice_ls, 1)[0]
         
         # Insert a character in a Random Location 
-        ######### should we experiment with an alphabet dictionairy of our own?
         if random_choice == 1: 
             random_index = np.random.randint(len(chars_selfie)+1)
             random_character = np.random.choice(alphabet, size=1)[0]
@@ -67,7 +65,7 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=True):
         sf = "".join(x for x in chars_selfie)
         
         try:
-            smiles = decoder(selfie_mutated)
+            smiles = selfies.decoder(selfie_mutated)
             mol, smiles_canon, done = sanitize_smiles(smiles)
             if len(selfie_mutated_chars) > max_molecules_len or smiles_canon=="" or substructure_preserver(mol)==False:
                 done = False
@@ -83,60 +81,3 @@ def mutate_selfie(selfie, max_molecules_len, write_fail_cases=True):
                 f.close()
     
     return (selfie_mutated, smiles_canon)
-
-def get_selfie_chars(selfie):
-    '''Obtain a list of all selfie characters in string selfie
-    
-    Parameters: 
-    selfie (string) : A selfie string - representing a molecule 
-    
-    Example: 
-    >>> get_selfie_chars('[C][=C][C][=C][C][=C][Ring1][Branch1_1]')
-    ['[C]', '[=C]', '[C]', '[=C]', '[C]', '[=C]', '[Ring1]', '[Branch1_1]']
-    
-    Returns:
-    chars_selfie: list of selfie characters present in molecule selfie
-    '''
-    chars_selfie = [] # A list of all SELFIE sybols from string selfie
-    while selfie != '':
-        chars_selfie.append(selfie[selfie.find('['): selfie.find(']')+1])
-        selfie = selfie[selfie.find(']')+1:]
-    return chars_selfie
-
-def get_mutated_SELFIES(selfies_ls, num_mutations): 
-    ''' Mutate all the SELFIES in 'selfies_ls' 'num_mutations' number of times. 
-    
-    Parameters:
-    selfies_ls   (list)  : A list of SELFIES 
-    num_mutations (int)  : number of mutations to perform on each SELFIES within 'selfies_ls'
-    
-    Returns:
-    selfies_ls   (list)  : A list of mutated SELFIES
-    
-    '''
-    for _ in range(num_mutations): 
-        selfie_ls_mut_ls = []
-        for str_ in selfies_ls: 
-            
-            str_chars = get_selfie_chars(str_)
-            max_molecules_len = len(str_chars) + num_mutations
-            
-            selfie_mutated, _ = mutate_selfie(str_, max_molecules_len)
-            selfie_ls_mut_ls.append(selfie_mutated)
-        
-        selfies_ls = selfie_ls_mut_ls.copy()
-    return selfies_ls
-
-def substructure_preserver(mol):
-    """
-    Check for substructure violates
-    Return True: contains a substructure violation
-    Return False: No substructure violation
-    """        
-    #'NS(=O)(=O)c1ccc(-n2cccn2)cc1'
-    #if mol.HasSubstructMatch(rdkit.Chem.MolFromSmarts('NS(=O)(=O)c1ccc(-n2cccn2)cc1')) == True:
-    if mol.HasSubstructMatch(rdkit.Chem.MolFromSmarts('C1=CC=C(C=C1)C2=CC(=O)C3=CC=CC=C3O2')) == True:
-        return True # The has substructure! 
-    else: 
-        return False # Molecule does not have substructure!
-
