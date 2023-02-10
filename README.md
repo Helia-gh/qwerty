@@ -1,6 +1,4 @@
-# An implementation of the STONED algorithm
-
-The 
+# We need a project name!
 
 #### Setting up an environment with conda
 
